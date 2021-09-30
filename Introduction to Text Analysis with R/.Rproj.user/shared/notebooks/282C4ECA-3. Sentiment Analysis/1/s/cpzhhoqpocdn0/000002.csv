@@ -1,0 +1,6 @@
+"0","wider_counts = no_stopword_tokens %>%"
+"0","  inner_join(get_sentiments(""bing"")) %>%"
+"0","  count(Stars, sentiment) %>%"
+"0","  spread(sentiment, value = n)"
+"2","Joining, by = ""word""
+"

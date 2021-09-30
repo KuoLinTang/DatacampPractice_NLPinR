@@ -1,0 +1,13 @@
+"0","no_stopword_tokenised_reviews %>%"
+"0","  count(word, id) %>%"
+"0","  cast_dtm(id, word, n)"
+"1","<<DocumentTermMatrix (documents: 1791, terms: 9670)>>
+"
+"1","Non-/sparse entries: 63116/17255854
+"
+"1","Sparsity           : 100%
+"
+"1","Maximal term length: NA
+"
+"1","Weighting          : term frequency (tf)
+"

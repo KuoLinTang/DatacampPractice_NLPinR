@@ -1,0 +1,12 @@
+"0","reviews = read_csv(""Datasets/Roomba Reviews.csv"")"
+"2","
+[36m--[39m [1m[1mColumn specification[1m[22m [36m----------------------------------------------------------------------------[39m
+cols(
+  Date = [31mcol_character()[39m,
+  Product = [31mcol_character()[39m,
+  Stars = [32mcol_double()[39m,
+  Title = [31mcol_character()[39m,
+  Review = [31mcol_character()[39m
+)
+
+"

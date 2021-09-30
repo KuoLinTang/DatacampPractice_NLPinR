@@ -1,0 +1,78 @@
+---
+title: "Visualizing sentiment"
+author: "Kuo-Lin Tang"
+date: "12/05/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Load required libraries
+```{r}
+library(tidyverse)
+library(tidytext)
+```
+
+# Load and tidy data
+```{r}
+reviews = read_csv("Datasets/Roomba Reviews.csv")
+
+bing = get_sentiments("bing")
+
+tidy_reviews = reviews %>%
+  mutate(id = row_number()) %>%
+  unnest_tokens(term, Review) %>%
+  anti_join(stop_words, by = c("term" = "word")) 
+```
+
+
+# Compute polarity
+```{r}
+reviews_polarity = tidy_reviews %>%
+  inner_join(bing, by = c("term" = "word")) %>%
+  count(id, sentiment) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(polarity = positive - negative)
+```
+
+
+# Visualise polarity
+```{r}
+reviews_polarity %>%
+  ggplot(aes(x = polarity)) +
+  geom_histogram()
+```
+
+
+# Examine some extreme values: 檢視這段文章中最常出現的正面字詞和負面字詞
+```{r}
+terms_polarity = tidy_reviews %>%
+  inner_join(bing, by = c("term" = "word")) %>%
+  count(term, sentiment) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(polarity = positive - negative)
+
+terms_label = terms_polarity %>%
+  filter(abs(polarity) >= 60) %>%
+  mutate(sentiment_label = ifelse(polarity > 0, "positive", "negative"))
+
+
+# Visualisation
+ggplot(terms_label, aes(x = reorder(term, polarity), y = polarity, fill = sentiment_label)) +
+  geom_col() + 
+  ggtitle("Sentiment Word Frequency") +
+  theme(axis.text.x = element_text(angle = 90, vjust = -0.1))
+```
+
+
+
+
+
+
+
+
+
+

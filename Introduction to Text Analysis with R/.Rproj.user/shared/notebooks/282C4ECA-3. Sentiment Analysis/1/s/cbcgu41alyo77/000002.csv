@@ -1,0 +1,4 @@
+"0","get_sentiments(""nrc"") %>%"
+"0","  count(sentiment) %>%"
+"0","  mutate(sentiment2 = fct_reorder(sentiment, n)) %>%"
+"0","  ggplot(aes(x = sentiment2, y = n)) + geom_col() + coord_flip() + labs(x = ""Sentiment"", y = ""Counts"", title = ""Sentiment Counts in NRC"")"

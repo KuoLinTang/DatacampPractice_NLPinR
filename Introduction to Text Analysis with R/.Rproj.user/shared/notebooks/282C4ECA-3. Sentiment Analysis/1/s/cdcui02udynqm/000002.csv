@@ -1,0 +1,4 @@
+"0","no_stopword_tokens = review_tokens %>%"
+"0","  anti_join(All_stopwords)"
+"2","Joining, by = ""word""
+"

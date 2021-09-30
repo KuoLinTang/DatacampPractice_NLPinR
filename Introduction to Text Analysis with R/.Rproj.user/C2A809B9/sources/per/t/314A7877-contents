@@ -1,0 +1,220 @@
+---
+title: "Sentiment Analysis"
+author: "Kuo-Lin Tang"
+date: "10/05/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load the required packages
+```{r}
+library(tidyverse)
+library(tidytext)
+```
+
+
+# Load the data
+```{r}
+reviews = read_csv("Datasets/Roomba Reviews.csv")
+reviews
+```
+
+
+# Sentiment Analysis
+## Rule/Lexicon-based method
+利用 pre-defined dictionary/lexicon 來做 sentiment analysis。"tidytext" 套件內建了 4 個不同的 sentiment dictionaries (可以透過 get_sentiments() 函數取用)
+
+### Explore the "bing" dictionary
+```{r}
+get_sentiments("bing")
+```
+
+```{r}
+get_sentiments("bing") %>%
+  count(sentiment)
+```
+這個dictionary的sentiment有positive和negative兩種。
+
+
+
+### Explore the "afinn" dictionary
+```{r}
+get_sentiments("afinn")
+```
+這個dictionary用value來定義每個字的sentiment，越大越positive，越小越negative。
+
+```{r}
+get_sentiments("afinn") %>%
+  summarise(
+    min = min(value),
+    max = max(value)
+  )
+```
+
+
+
+### Explore the "loughran" dictionary
+```{r}
+get_sentiments("loughran")
+```
+
+```{r}
+get_sentiments("loughran") %>%
+  count(sentiment)
+```
+共有6種sentiments
+
+將這六種sentiments畫成bar chart
+```{r}
+get_sentiments("loughran") %>%
+  count(sentiment) %>%
+  mutate(sentiment2 = fct_reorder(sentiment, n)) %>%
+  ggplot(aes(x = sentiment2, y = n)) + geom_col() + coord_flip() + labs(x = "Sentiment", y = "Counts", title = "Visualisation of Loughran dictionary")
+```
+
+
+### Explore the "nrc" dictionary
+```{r}
+get_sentiments("nrc")
+```
+
+```{r}
+get_sentiments("nrc") %>%
+  count(sentiment) %>%
+  arrange(desc(n))
+```
+
+總共10種sentiments。
+
+```{r}
+get_sentiments("nrc") %>%
+  count(sentiment) %>%
+  mutate(sentiment2 = fct_reorder(sentiment, n)) %>%
+  ggplot(aes(x = sentiment2, y = n)) + geom_col() + coord_flip() + labs(x = "Sentiment", y = "Counts", title = "Sentiment Counts in NRC")
+```
+
+
+
+---
+
+## Appending dictionaries
+使用rule/lexicon-based method來analyse sentiment時，要將現有的lexicons或dictionaries和我要分析的文件合併。也就是說，我要先將文件tokenize，然後加入dictionaries，讓我每個tokens都有標記好的sentiment values。
+
+## 使用inner_join()將tokenized data和sentiment dictionary合併
+
+###先tokenise並且移除stop words
+新增一個row number column 並做 tokenisation
+```{r}
+review_tokens = reviews %>%
+  mutate(id = row_number()) %>%
+  unnest_tokens(word, Review)
+```
+
+### 自行定義一個 customised stop words tibble 並與 general stop words tibble 合併
+自定義 stop words
+```{r}
+my_stop_words = tribble(
+  ~word, ~lexicon,
+  "roomba", "CUSTOM",
+  "2", "CUSTOM"
+)
+```
+
+合併 stop words
+```{r}
+All_stopwords = stop_words %>%
+  rbind(my_stop_words)
+
+rm(my_stop_words)
+```
+
+移除文件中 stop words 的 tokens
+```{r}
+no_stopword_tokens = review_tokens %>%
+  anti_join(All_stopwords)
+```
+
+用 inner_join() 合併 Loughran Dictionary (**只有同時在dictionary和文件中出現的詞會保留**)
+```{r}
+sentiment_reviews = no_stopword_tokens %>%
+  inner_join(get_sentiments("loughran"))
+```
+
+
+### Explore the sentiment review dataframe
+Count the number of words of each sentiment
+```{r}
+sentiment_reviews %>%
+  count(sentiment)
+```
+
+
+看看哪個字是最常用的positive word，哪個字是最常用的negative word
+```{r}
+sentiment_reviews %>%
+  count(sentiment, word) %>%
+  arrange(desc(n))
+```
+
+
+Visualise the most common words for only positive or negative words
+```{r}
+sentiment_reviews %>%
+  filter(sentiment %in% c("positive", "negative")) %>%
+  count(sentiment, word) %>%
+  group_by(sentiment) %>%
+  top_n(10, n) %>%
+  ungroup() %>%
+  mutate(word2 = fct_reorder(word, n)) %>%
+  ggplot(aes(x = word2, y = n, fill = sentiment)) + geom_col(show.legend = FALSE) + coord_flip() + facet_wrap(~ sentiment, scales = "free") + labs(title = "Review Counts")
+```
+
+
+
+# Improving sentiment analysis
+```{r}
+no_stopword_tokens %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(Stars, sentiment)
+```
+
+
+我們要看看每個star rating的sentiment的數量。可以看到，上面的結果是一個long dataframe，我們可以用spread函數將negative和positive變成columns
+```{r}
+wider_counts = no_stopword_tokens %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(Stars, sentiment) %>%
+  spread(sentiment, value = n)
+```
+
+
+計算每個star rating中，positive和negative的數量差距
+```{r}
+wider_counts = wider_counts %>%
+  mutate(overall_sentiment = positive - negative) 
+```
+
+
+將Stars根據overall_sentiment轉換成factor並且重新排列
+```{r}
+wider_counts = wider_counts %>%
+  mutate(Stars2 = fct_reorder(as.character(Stars), overall_sentiment))
+```
+
+
+Visualise the overall sentiment
+```{r}
+wider_counts %>%
+  ggplot(aes(x = Stars2, y = overall_sentiment, fill = Stars2)) + 
+  geom_col(show.legend = FALSE) + 
+  coord_flip() + 
+  labs(title = "Overall Sentiment by Stars",
+       subtitle = "Reviews for Robotic Vacuum",
+       x = "Stars",
+       y = "Overall Sentiment")
+```
+
+由上圖可以看到，五星的評價是非常正向的，而1星到4星都沒有正向的sentiment，4星也只是接近neutral而已

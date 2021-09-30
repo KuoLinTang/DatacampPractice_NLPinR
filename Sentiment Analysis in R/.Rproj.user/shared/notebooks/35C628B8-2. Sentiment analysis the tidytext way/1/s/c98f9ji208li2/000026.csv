@@ -1,0 +1,3 @@
+"0","# Count the sentiment for each document"
+"0","( labelled_tokens %>%"
+"0","  count(sentiment, id) )"

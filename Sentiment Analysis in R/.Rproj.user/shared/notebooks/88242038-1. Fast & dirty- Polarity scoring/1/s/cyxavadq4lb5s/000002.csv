@@ -1,0 +1,1 @@
+"0","custom_pol <- sentiment_frame(positive.words , c(negative.words, ""stressed"", ""turn back""))"

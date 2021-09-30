@@ -1,0 +1,87 @@
+---
+title: "Wrangling Text"
+author: "Kuo-Lin Tang"
+date: "09/05/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load required packages
+```{r}
+library(tidyverse)
+```
+
+
+# Read the dataset
+```{r}
+review_data = read_csv("Datasets/Roomba Reviews.csv")
+view(review_data)
+str(review_data)
+```
+
+
+# Data exploration
+## Compute the average star rating for each product
+```{r}
+( review_data %>%
+  group_by(Product) %>%
+  summarise(average_star_rating = mean(Stars)) )
+```
+
+
+## Summarize the number of rows in each product
+### Method 1: group_by + n()
+```{r}
+review_data %>%
+  group_by(Product) %>%
+  summarize(number_of_rows = n())
+```
+
+
+### Method 2: count()
+```{r}
+review_data %>%
+  count(Product) %>%
+  arrange(desc(n))
+```
+
+
+# Tokenization and Cleaning
+the **tidytext** package is useful to transform unstructured text data into structured data that can be analysed further
+
+```{r}
+library(tidytext)
+```
+
+## Tokenising using unnest_tokens(dataframe, output_column_name, input_column_name)
+```{r}
+tidy_review = review_data %>%
+  unnest_tokens(word, Review)
+```
+
+### Count words
+```{r}
+tidy_review %>%
+  count(word) %>%
+  arrange(desc(n))
+```
+From the result above, we can see words with the most appearances are stop words. They are meaningless, so we should remove them. Tidytext packages has a pre-defined dataframe of stop words named "stop_words".
+
+
+
+## Using anti_join() to remove stop words
+```{r}
+tidy_review2 = review_data %>%
+  unnest_tokens(word, Review) %>%
+  anti_join(stop_words)
+```
+
+### Count words
+```{r}
+tidy_review2 %>%
+  count(word) %>%
+  arrange(desc(n))
+```

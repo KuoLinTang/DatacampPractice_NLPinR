@@ -1,0 +1,3 @@
+"0","get_sentiments(""nrc"") %>%"
+"0","  count(sentiment) %>%"
+"0","  arrange(desc(n))"

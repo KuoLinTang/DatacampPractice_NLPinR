@@ -1,0 +1,188 @@
+---
+title: "Sentiment analysis the tidytext way"
+author: "Kuo-Lin Tang"
+date: "12/05/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Load required packages
+```{r}
+library(tidyverse)
+library(tidytext)
+```
+
+
+# Lexicon-based Sentiment Analysis with tidytext dictionaries
+## afinn dictionary
+```{r}
+afinn_lex = get_sentiments("afinn")
+afinn_counts = afinn_lex %>%
+  count(value)
+
+# Plot n vs. sentiment
+ggplot(afinn_counts, aes(x = value, y = n)) +
+  # Add a col layer
+  geom_col()
+```
+
+## nrc dictionary
+```{r}
+nrc_lex = get_sentiments("nrc")
+nrc_counts = nrc_lex %>%
+  count(sentiment)
+
+# Plot n vs. sentiment
+ggplot(nrc_counts, aes(x = sentiment, y = n)) +
+  # Add a col layer
+  geom_col()
+```
+
+
+## loughran dictionary
+```{r}
+loughran_lex = get_sentiments("loughran")
+loughran_counts = loughran_lex %>%
+  count(sentiment)
+
+# Plot n vs. sentiment
+ggplot(loughran_counts, aes(x = sentiment, y = n)) +
+  # Add a col layer
+  geom_col()
+```
+
+
+## bing dictionary
+```{r}
+bing_lex = get_sentiments("bing")
+bing_counts = bing_lex %>%
+  count(sentiment)
+
+# Plot n vs. sentiment
+ggplot(bing_counts, aes(x = sentiment, y = n)) +
+  # Add a col layer
+  geom_col()
+```
+
+
+
+# 利用 inner_join() 將我的目標文件和 tidytext 的 dictionaries 內的字連結
+## Bing lexicon: 只有 positive 和 negative
+### Load the data
+```{r}
+reviews = read_csv("Datasets/Roomba Reviews.csv")
+```
+
+
+### Add an id for each row
+```{r}
+( reviews = reviews %>%
+  mutate(id = as.numeric(row_number())) )
+```
+
+### Tokenisation
+```{r}
+( tokenised_reviews = reviews %>%
+  unnest_tokens(term, Review) )
+```
+
+
+### Remove stop words
+```{r}
+( clean_tokens = tokenised_reviews %>%
+  anti_join(stop_words, by = c("term" = "word")) )
+```
+
+
+### Inner_join() with the sentiment dictionary
+```{r}
+# get the bing lexicon
+bing = get_sentiments("bing")
+
+# inner_join()
+labelled_tokens = clean_tokens %>%
+  inner_join(bing, by = c("term" = "word"))
+
+# Count the sentiment
+labelled_tokens %>%
+  count(sentiment)
+```
+
+
+```{r}
+# Count the sentiment for each document
+( labelled_tokens %>%
+  count(sentiment, id) )
+
+# 將sentiment這一個column變成positive和negative兩個columns
+( wider_labelled_tokens = labelled_tokens %>%
+  count(sentiment, id) %>%
+  spread(sentiment, n, fill = 0)  )
+
+# 計算每一個document (每一個id) 的 polarity score
+( wider_labelled_tokens = wider_labelled_tokens %>%
+  mutate(polarity = positive - negative) )
+
+# 畫出polarity scores在corpus中的變化
+ggplot(wider_labelled_tokens, aes(x = id, y = polarity)) + 
+  geom_point() +
+  geom_smooth()
+```
+
+
+
+### Afinn lexicon: polarity value 從 -5 到 5
+```{r}
+afinn = get_sentiments("afinn")
+
+( afinn_tokens = clean_tokens %>%
+  inner_join(afinn, by = c("term" = "word")) )
+```
+
+
+計算每一個document的polarity score
+```{r}
+( afinn_score = afinn_tokens %>%
+  group_by(id) %>%
+  summarise(polarity = sum(value)) )
+```
+
+畫出polarity scores在corpus中的變化
+```{r}
+ggplot(afinn_score, aes(x = id, y = polarity)) + 
+  geom_point() +
+  geom_smooth()
+```
+
+
+
+### NRC lexicon: 有10個sentiments
+```{r}
+nrc = get_sentiments("nrc")
+
+# 用 nrc 要先 count
+( tokens_count = clean_tokens %>%
+  count(id, term) )
+
+( nrc_tokens = tokens_count %>%
+  inner_join(nrc, by = c("term" = "word")) )
+```
+
+只考慮Plutchik sentiments並計算整段文字各sentiment的總數
+```{r}
+( Plutchik_nrc_tokens = nrc_tokens %>%
+  filter(!sentiment %in% c("positive", "negative")) %>%
+  group_by(sentiment) %>%
+  summarise(total_count = sum(n)) )
+```
+
+# Plot total_count vs. sentiment
+```{r}
+ggplot(Plutchik_nrc_tokens, aes(x = sentiment, y = total_count)) +
+  # Add a column geom
+  geom_col()
+```

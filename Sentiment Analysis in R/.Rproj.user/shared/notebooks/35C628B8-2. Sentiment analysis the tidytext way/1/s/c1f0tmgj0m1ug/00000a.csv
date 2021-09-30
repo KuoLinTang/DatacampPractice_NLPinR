@@ -1,0 +1,8 @@
+"0","afinn_lex = get_sentiments(""afinn"")"
+"0","afinn_counts = afinn_lex %>%"
+"0","  count(value)"
+"0",""
+"0","# Plot n vs. sentiment"
+"0","ggplot(afinn_counts, aes(x = value, y = n)) +"
+"0","  # Add a col layer"
+"0","  geom_col()"

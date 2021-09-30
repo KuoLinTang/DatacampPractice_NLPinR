@@ -1,0 +1,8 @@
+"0","loughran_lex = get_sentiments(""loughran"")"
+"0","loughran_counts = loughran_lex %>%"
+"0","  count(sentiment)"
+"0",""
+"0","# Plot n vs. sentiment"
+"0","ggplot(loughran_counts, aes(x = sentiment, y = n)) +"
+"0","  # Add a col layer"
+"0","  geom_col()"

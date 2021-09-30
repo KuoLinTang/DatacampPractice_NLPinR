@@ -1,0 +1,25 @@
+{
+    "id": "314A7877",
+    "path": "D:/Programming Exercises/Datacamp/NLP in R/Introduction to Text Analysis with R/3. Sentiment Analysis.Rmd",
+    "project_path": "3. Sentiment Analysis.Rmd",
+    "type": "r_markdown",
+    "hash": "454018857",
+    "contents": "",
+    "dirty": false,
+    "created": 1620612811596.0,
+    "source_on_save": false,
+    "relative_order": 2,
+    "properties": {
+        "cursorPosition": "219,58",
+        "scrollLine": "218",
+        "last_setup_crc32": "660841E5bb338d19"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1620691739,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1620691739198,
+    "read_only": false,
+    "read_only_alternatives": []
+}

@@ -1,0 +1,151 @@
+---
+title: "Wordclouds, stopwords, and control arguments"
+author: "Kuo-Lin Tang"
+date: "25/05/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Latent Dirichlet Allocation (LDA)
+## Implementation in R
+```{r}
+library(topicmodels)
+
+LDA_model1 = LDA(x = dtm, 
+                 k = 2, 
+                 method = "Gibbs", 
+                 control = list(alpha = 1, 
+                                delta = 0.1, 
+                                seed = 42,
+                                iter = 1000))
+```
+## 參數介紹
+### Method
+LDA是透過random search一些參數來找出最好的結果。最好的結果是由log-likelihood作為指標，當一組參數所得到的模型擁有最高的log-likelihood時，該模型就是我們要找的最佳解。而random search也有很多方式，其中LDA 所使用的是Gibbs sampling (屬於一種蒙特卡羅馬可夫演算法)，因此我們在使用LDA函數時都會specify method = "Gibbs"
+
+### Control
+#### Alpha and Delta
+Control要以list的形式傳入參數，主要定義一些初始值。前面提到的Gibbs sampling主要會嘗試different combinations of probabilities of topics in documents (gamma), and probabilities of words in topics (beta)。例如：(0.5, 0.5) vs. (0.8, 0.2) for two topics in documents。 而這些probabilities的組合主要是由alpha和delta這兩個control arguments所決定。
+
+#### Seed
+定義隨機種子，以便之後別人可以reproduce。
+
+### Iter
+定義the number of steps in search process。數值大的時候可以增加找到best model的機會，但建模時間更久
+
+預設的iter為2000
+
+### Thin
+thin這個control list中的參數主要決定how often to return the result of search
+當thin = 1時，每一個step都會回傳一個模型，並且最後選出最好的。這樣可以找到最佳解，但費時甚高
+
+## 回傳值
+LDA模型主要會回傳兩個矩陣：beta和gamma。其中beta為一個topic-term matrix，存有每個term屬於各個topic 的機率。而gamma唯一個document-topic matrix，代表一個document中各topic佔有多少比例。 這兩個矩陣都可以用tidytext的tidy()函數轉換成tidy format data，以備未來其他的分析與處理。
+
+### Terms() 函數
+Terms() 函數可以回傳各個topic中the most probable words，可以按照參數來調整輸出。例如：選擇top k個words，或是傳入 threshold來篩選回傳的字詞。
+
+
+# 課堂例子
+```{r}
+book = data.frame(chapter = c(1, 2), text = c("It is what it is", "What goes around comes around."))
+
+# Build the document-term matrix
+dtm = book %>%
+  unnest_tokens(word, text) %>%
+  count(chapter, word) %>%
+  cast_dtm(term = word, document = chapter, value = n)
+
+# LDA modeling
+LDA_model = LDA(x = dtm, 
+                k = 2, 
+                method = "Gibbs", 
+                control = list(alpha = 1, 
+                              delta = 0.1, 
+                              seed = 42,
+                              iter = 1000,
+                              thin = 1))
+
+# Terms()
+terms(LDA_model, k = 5)
+```
+如果只是使用top k來得到結果，可能會有些confusing，因為沒有考慮到實際的機率。也就是說，就算機率很低，只要排在前幾名都會被印出來。
+
+因此可以多用機率的threshold
+```{r}
+terms(LDA_model, threshold = 0.05)
+```
+
+---
+---
+---
+
+# Control what words will be included into the DTM
+做topic modeling之前必須移除stop words，因為stop words的word counts通常很高，會讓這些字詞 dominate topic model的結果。可以利用anti_join()來消除stop words
+
+# 文字雲 Word clouds
+可以offer a quicker impressionistic look at the topics
+
+## wordcloud()
+Wordcloud() 函數輸入的frequency參數必須是整數，而LDA回傳的機率是小數，因此要先將所有機率都乘以一個 很大的數，然後再移除剩餘的小數部分。移除小數的部分可以用 trunc() 函數達成。
+```{r}
+library(wordcloud)
+
+word_freq = tidy(LDA_model, matrix = "beta") %>%
+  mutate(n = trunc(beta*10000))
+
+wordcloud(words = word_freq$term,
+          freq = word_freq$n,
+          colors = c("DarkOrange", "CornflowerBlue", "DarkRed"),
+          rot.per = 0.3)
+```
+
+rot.per代表 the percentage of rotated words.
+
+
+
+
+# Case study: analysing the Byzantine book
+```{r}
+load("Datasets/history_2.RData")
+```
+
+## Objectives
+利用Topic modeling來identify the predominant themes in chapters.
+
+### 步驟
+1. Prepare a DTM
+2. Fit a simple model (four topics)
+3. Examine the topics. If necessary, re-run the model
+4. Visualise with ggplot
+5. Compare the result with outside knowledge
+
+####步驟一
+```{r}
+byzantium_clean
+
+dtm = byzantium_clean %>%
+  unnest_tokens(input = text, output = word) %>%
+  anti_join(stop_words) %>%
+  count(chapter, word) %>%
+  cast_dtm(document = chapter, term = word, value = n)
+```
+
+####步驟二
+```{r}
+mod <- LDA(dtm, method = "Gibbs", k = 4, 
+           control=list(alpha=1, seed=10005))
+```
+
+####步驟三
+檢視結果
+```{r}
+terms(mod, k=15)
+```
+
+調整資料
+由於資料中的text都是過去式，因此要移除Stop words的過去式才對

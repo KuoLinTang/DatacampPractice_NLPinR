@@ -1,0 +1,1 @@
+"0","langmodel <- udpipe::udpipe_load_model(""english-ewt-ud-2.5-191206.udpipe"")"

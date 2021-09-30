@@ -1,0 +1,8 @@
+"0","dtm = byzantium_clean %>%
+  unnest_tokens(input = text, output = word) %>%
+  anti_join(stop_words) %>%
+  count(chapter, word) %>%
+  cast_dtm(document = chapter, term = word, value = n)
+"
+"2","Joining, by = ""word""
+"

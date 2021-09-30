@@ -1,0 +1,6 @@
+"0","tidy_review_2 %>%"
+"0","  group_by(word, Product) %>%"
+"0","  summarise(n = n()) %>%"
+"0","  arrange(desc(n))"
+"2","`summarise()` regrouping output by 'word' (override with `.groups` argument)
+"

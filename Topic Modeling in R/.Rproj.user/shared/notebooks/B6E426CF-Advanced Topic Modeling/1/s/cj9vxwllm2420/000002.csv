@@ -1,0 +1,7 @@
+"0","lemmatized = postagged %>%"
+"0","  filter(upos %in% c(""NOUN"", ""ADJ"", ""ADV"")) %>%"
+"0","  select(doc_id, lemma) %>%"
+"0","  group_by(doc_id) %>%"
+"0","  summarise(documents_pos_tagged = paste(lemma, collapse = "" ""))"
+"2","`summarise()` ungrouping output (override with `.groups` argument)
+"

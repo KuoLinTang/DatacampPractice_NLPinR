@@ -1,0 +1,5 @@
+"0","data_airbnb = data_airbnb %>%"
+"0","  filter(language == ""english"") %>% "
+"0","  rename(documents = comments) %>% "
+"0","  select(review_id,documents,review_scores_rating) %>% "
+"0","  na.omit()"

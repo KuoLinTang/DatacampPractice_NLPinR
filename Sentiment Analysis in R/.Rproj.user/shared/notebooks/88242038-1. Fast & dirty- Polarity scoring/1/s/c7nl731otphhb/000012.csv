@@ -1,0 +1,7 @@
+"0","# Verify the polarity score
+( pos_score_manual = n_good / sqrt(n_words) )
+"
+"1","[1]"
+"1"," 0.4082483"
+"1","
+"

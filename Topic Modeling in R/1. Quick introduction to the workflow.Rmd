@@ -1,0 +1,167 @@
+---
+title: "Quick introduction to the workflow"
+author: "Kuo-Lin Tang"
+date: "13/05/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Topic Modeling Workflow
+A topic consists of a collection of words.
+
+Here, we are focusing on Latent Dirichlet Allocation. LDA takes a document-term matrix (DTM) as an input. LDA returns two matrices: Document-Topic matrix and Topic-Term matrix
+
+## Useful packages
+```{r}
+library(tidyverse)
+library(tidytext)
+```
+
+# Counting words
+To fit a topic model, we must prepare a document-term matrix (contains counts of word occurences in documents) using **tidytext** and **tidyverse**.
+
+
+## Tokenisation
+unnest_tokens(data, input=text, output=word, format="text", tokens="word", drop=TRUE, to_lower=TRUE)
+
+### Example
+```{r}
+book = data.frame(chapter = c(1, 2), text = c("It is what it is", "What goes around comes around."))
+
+book %>%
+  unnest_tokens(input = text, 
+                output = word,
+                token = "words",
+                format = "text",
+                drop = T,
+                to_lower = T)
+```
+
+
+## Count()
+Count frequency of words
+
+### Example
+```{r}
+book %>%
+  unnest_tokens(input = text, 
+                output = word,
+                token = "words",
+                format = "text",
+                drop = T,
+                to_lower = T) %>%
+  count(chapter, word)
+```
+
+### Get the most frequent words of the whole book
+```{r}
+book %>%
+  unnest_tokens(input = text, 
+                output = word,
+                token = "words",
+                format = "text",
+                drop = T,
+                to_lower = T) %>%
+  count(chapter, word) %>%
+  top_n(1, n)
+```
+
+### Get the most frequent words of each chapter
+```{r}
+book %>%
+  unnest_tokens(input = text, 
+                output = word,
+                token = "words",
+                format = "text",
+                drop = T,
+                to_lower = T) %>%
+  count(chapter, word) %>%
+  group_by(chapter) %>%
+  top_n(1, n)
+```
+
+
+## Transform a count() object into a Document-Term matrix
+Use cast_dtm(document = DOCUMENT_ID, term = WORD, value = COUNT)
+```{r}
+dtm = book %>%
+  unnest_tokens(input = text, 
+                output = word,
+                token = "words",
+                format = "text",
+                drop = T,
+                to_lower = T) %>%
+  count(chapter, word) %>%
+  cast_dtm(document = chapter, term = word, value = n)
+```
+
+### Check the DTM
+```{r}
+as.matrix(dtm)
+```
+
+
+
+# The first Latent Dirichlet Allocation (LDA) model
+```{r}
+library(topicmodels)
+
+LDA_model1 = LDA(x = dtm, 
+                 k = 2, 
+                 method = "Gibbs", 
+                 control = list(alpha = 1, 
+                                delta = 0.1, 
+                                seed = 42))
+```
+
+
+# Display frequency with ggplot
+## Display two kinds of data
+1. Word counts (obtained before topic modeling)
+2. Probabilities of topics and words (obtained after topic modeling)
+
+由於ggplot的輸入只能接受tidy format的東西，例如tibbles、dataframes等等。而透過count()函數得到的word counts已經是tidy format了，因此可以直接用ggplot畫出。然而，LDA model中的probabilities of topics and words (beta and gamma)並不是tidy format，因此要用tidy()函數將beta、gamma物件轉換成tidy format data
+
+
+**beta**: 記錄著各個term屬於某一個topic的機率 (一個topic-term matrix)
+**gamma**: 記錄著每個document中各topic佔有的比例 (一個document-topic matrix) (總和是1)
+
+因此，LDA就是將一個document-term matrix轉換成一個topic-term matrix和一個document-topic matrix
+
+
+## Tidy() 函數
+tidy(lda_model, matrix = "beta") 代表取出lda_model中的beta矩陣
+tidy(lda_model, matrix = "gamma") 代表取出lda_model中的gamma矩陣
+
+### Visualising
+#### Stacked columns chart
+```{r}
+tidy(LDA_model1, matrix = "gamma") %>%
+  ggplot(aes(x = document, y = gamma)) +
+  geom_col(aes(fill = as.factor(topic)))
+```
+由於一個文件的所有topics的比例總和為1，因此很適合用stacked columns chart
+
+
+#### Dodged columns chart
+```{r}
+tidy(LDA_model1, matrix = "beta") %>%
+  ggplot(aes(x = term, y = beta)) +
+  geom_col(aes(fill = as.factor(topic)),
+           position = position_dodge())
+```
+beta為每一個字詞屬於各topic的機率，多用dodged columns chart來視覺化
+
+由於每個詞的長度不同，因此當corpus中有很多字詞時，有可能會在圖中重疊。因此可以將每個字詞都變成直的
+```{r}
+tidy(LDA_model1, matrix = "beta") %>%
+  mutate(topic = as.factor(topic)) %>%
+  ggplot(aes(x = term, y = beta)) +
+  geom_col(aes(fill = topic),
+           position = position_dodge()) +
+  theme(axis.text.x = element_text(angle = 90))
+```

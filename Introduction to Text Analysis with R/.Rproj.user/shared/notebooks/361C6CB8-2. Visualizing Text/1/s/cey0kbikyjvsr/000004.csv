@@ -1,0 +1,6 @@
+"0","word_counts = tidy_review_2 %>%"
+"0","  count(word) %>%"
+"0","  filter(n > 300) %>%"
+"0","  mutate(word2 = fct_reorder(word, n))"
+"0",""
+"0","word_counts"

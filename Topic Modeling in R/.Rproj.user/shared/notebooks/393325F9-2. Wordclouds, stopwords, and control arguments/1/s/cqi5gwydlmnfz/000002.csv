@@ -1,0 +1,2 @@
+"0","mod <- LDA(dtm, method = ""Gibbs"", k = 4, "
+"0","           control=list(alpha=1, seed=10005))"

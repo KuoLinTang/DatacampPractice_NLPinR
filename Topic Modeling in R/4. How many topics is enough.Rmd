@@ -1,0 +1,139 @@
+---
+title: "How many topics is enough?"
+author: "Kuo-Lin Tang"
+date: "26/05/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(tidytext)
+library(topicmodels)
+```
+
+
+# Finding the best number of topics
+有兩種方法：
+1. Topic coherence
+  每次建立模型之後，就檢視各個topic中的字詞機率，並決定這些topics是否合理
+  如果我們發現有些完全不相關的字詞都被分配到同一個topic，則表示coherence很低
+  
+2. Quantitative measures
+  檢視模型的log-likelihood和perplexity來判斷模型是否足夠好
+  Log-likelihood: How plausible model parameters are given the data
+  Perplexity: The measure of surprise when the model is given a new data
+  
+## Log-likelihood
+Log-likelihood為likelihood的對數值。一般來說，likelihood為介於0到1的值，因此log-likelihood是一個負數。LDA的目標就是要找到擁有最大的log-likelihood的模型，可以用logLik()得到一個LDA模型的log-likelihood。
+
+## Perplexity
+Perplexity是一個正數，擁有較小的perplexity的模型比大perplexity的模型要好。可以利用 perplexity(object=model, newdata = dtm)來取得模型的perplexity
+
+
+## 尋找最佳的K值
+1. Fit the model for several values of k
+2. Plot the values of log-likelihood and perplexity
+3. 尋找plots的elbow point
+
+由於尋找K值的過程要花很多時間，因此LDA有提供一個可以中斷尋找過程，並且之後繼續建立模型的方法：
+  建立一個LDA模型時可以用另一個LDA模型來做initialisation，只要將一個LDA模型當作參數傳入LDA()就好
+
+
+## 課堂練習
+```{r}
+load("Datasets/ch3.RData")
+
+dtm = df %>%
+  unnest_tokens(input = Abstract, output = word) %>%
+  anti_join(stop_words) %>%
+  count(AwardNumber, word) %>%
+   group_by(word) %>% 
+   # Filter for corpus wide frequency
+   filter(sum(n) >= 10) %>% 
+   ungroup() %>% 
+   cast_dtm(document=AwardNumber, term=word, value=n)
+```
+
+建立模型並且檢視結果
+```{r}
+mod = LDA(x=dtm, method="Gibbs", k=3, 
+          control=list(alpha=0.5, seed=1234, iter=500, thin=1))
+
+# Retrieve log-likelihood
+logLik(mod)
+
+# Find perplexity
+perplexity(object=mod, newdata=dtm)
+```
+
+
+跑多個模型並比較結果
+```{r}
+mod_perplexity = numeric(9)
+for (i in 2:10){
+  model = LDA(x=dtm, method="Gibbs", k=i, 
+          control=list(alpha=0.5, seed=1234, iter=500, thin=1))
+  mod_perplexity[i] = perplexity(object=model, newdata = dtm)
+}
+
+plot(x = 2:10, y = mod_perplexity[2:10], xlab="number of clusters, k", 
+     ylab="perplexity score", type="o")
+```
+6個topics看起來是足夠好的結果
+
+
+---
+---
+---
+
+
+# Topic models fitted to novels
+Prepare documents for topic modeling when the data is one long text
+
+對於小說或書本這類的corpus，如果我們以chapter當作一個document，這樣一個chapter中的文字會太多，分析的結果會過於粗略。因此我們要自行將text分成數個chunks，比chapter短，但是能capture an event or a scene in the plot。對於一般的novels，我們通常一個chunk包含1000個字詞，大概是3頁。
+
+不像書中已經有chapters了，我們需要自己標記chunks的id，我們可以用integer division (取商)來將tokens 分到各chunks中，例如：如果一個chunk要是1000個字詞，則 chunk_id = row_number %/% 1000 + 1。其中，+1 代表chunk_id由1開始，而 %/% 代表取商。
+
+Chunk size的選擇是根據不同文件而異的，除了根據作者的寫作習慣、編輯方式，也可以嘗試不同的chunk sizes來做分析，並比較結果。
+
+標記好chunk_id之後，就可以
+
+
+---
+
+
+# Locking topics by using seed words
+一般來說，為了讓LDA的結果可以reproduce，我們會傳入control = list(seed = 1234)這個initialisation的亂數種子。這樣代表我們可能會exclude some solutions。另外有一種方法，是透過lock the topic numbers並且不須specify the random seed來initialise我們的模型。事實上，這就是透過seedwords這個矩陣來達到。
+
+Seedwords這個矩陣的每個row代表一個topic，每個column代表每個term。這是一個topic-term matrix，但是內部存的數值並不是機率，而是預先定義好的。如果我知道某個term屬於某個topic，則該數值等於1。傳入這種pre-defined的矩陣作為一個參數，等於是給模型的最佳化過程提供一個initial solution，可以減少訓練模型所需的時間。另外，也可以將別人跑好的模型(pre-trained model)當作seedwords matrix來輸入參數，可以根據他人的pre-trained model和我所擁有的資料進行fine-tune。
+
+
+## 課堂例子
+```{r}
+# Set up the column names
+colnames(seedwords) <- colnames(dtm)
+
+# Set the weights
+seedwords[1, "defeated_l2"] = 1
+seedwords[2, "across_l2"] = 1
+
+# Fit the topic model
+mod <- LDA(dtm, k=3, method="Gibbs",
+         seedwords=seedwords,
+         control=list(alpha=1, iter=500, seed=1234))
+
+# Examine topic assignment in the fitted model
+tidy(mod, "gamma") %>% spread(topic, gamma) %>% 
+	filter(document %in% c(" Daniel", " Adrianople", " African"))
+```
+
+
+---
+
+
+# Other things to learn
+LDA不是唯一一個topic modeling的方法，還有Variational Expectation-Maximization (VEM)，可以在topics之間有correlations時使用。可以使用STM套件(structured topic models)來實踐這個方法。這個套件還可以用LDA的結果當作initial solution來加速model fitting的速度。

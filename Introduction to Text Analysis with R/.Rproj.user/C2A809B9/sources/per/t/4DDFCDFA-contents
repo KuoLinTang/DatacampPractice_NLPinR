@@ -1,0 +1,177 @@
+---
+title: "Visualizing Text"
+author: "Kuo-Lin Tang"
+date: "10/05/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load the required packages
+```{r}
+library(tidyverse)
+library(tidytext)
+```
+
+
+# Load the dataset
+```{r}
+reviews = read_csv("Datasets/Roomba Reviews.csv")
+view(reviews)
+str(reviews)
+```
+
+
+# Record the row number of each review
+```{r}
+tidy_reviews = reviews %>%
+  mutate(id = row_number()) %>%
+  unnest_tokens(word, Review) %>%
+  anti_join(stop_words)
+```
+With the id, we can record where this token comes from. 
+
+# Visualise counts with a bar plot (geom_col())
+```{r}
+tidy_reviews %>%
+  count(word) %>%
+  arrange(desc(n)) %>%
+  ggplot(aes(x = word, y = n)) + geom_col()
+```
+We can see from the bar chart that there are too many words to be plotted. Also, the magnitude of the counts are quite various. Another, words at the x-asix are overlapped, so we need to flip the coordinate while plotting.
+
+## Plot the words whose appearance is larger than 300 and flip the coordinate (coord_flip())
+```{r}
+tidy_reviews %>%
+  count(word) %>%
+  filter(n > 300) %>%
+  arrange(desc(n)) %>%
+  ggplot(aes(x = word, y = n)) + 
+  geom_col() + 
+  coord_flip() +
+  ggtitle("Review Word Counts")
+```
+
+
+## Customise our stop words dataframe
+
+Firstly, we create our own dataframe or tibble to contain our custom stop words. We can use the **tribble** function. 
+
+Check the structure of stop_words dataframe
+```{r}
+stop_words
+```
+
+
+Create our own stop_words dataframe using tribble
+```{r}
+custom_stop_words = tribble(
+  ~word, ~lexicon,
+  "roomba", "CUSTOM",
+  "2", "CUSTOM"
+)
+```
+The name of columns do not need to be quoted, but a wave sign is needed in front of the name of each column. 
+
+
+Combine the original stop_words and our custom stop_words
+```{r}
+stop_words_2 = stop_words %>%
+  rbind(custom_stop_words)
+```
+
+
+
+### Use stop_words_2 to remove uninformative words
+```{r}
+tidy_review_2 = reviews %>%
+  mutate(id = row_number()) %>%
+  unnest_tokens(word, Review) %>%
+  anti_join(stop_words_2)
+```
+
+## 定義 bar 的排列順序
+為了讓 bar chart 的 bars 由大排到小，我們要改變 column types。原來 word 是 character，但是 character 的排列是 alphabetic order，因此我們可以將 word 改成 factor 的型態，並自行定義排列方式。
+```{r}
+word_counts = tidy_review_2 %>%
+  count(word) %>%
+  filter(n > 300) %>%
+  mutate(word2 = fct_reorder(word, n))
+
+word_counts
+```
+
+fct_reorder(word, n) 代表將 word 根據 n 的大小來排列，並且轉換成 factor。
+
+
+Replot the bar chart
+```{r}
+ggplot(word_counts, aes(x = word2, y = n)) +
+  geom_col() +
+  coord_flip() +
+  ggtitle("Review Word Counts")
+```
+這樣 bar 就會根據 n 的大小排列了
+
+
+# 將兩個 products 分開計算
+Method 1: group_by + summarise
+```{r}
+tidy_review_2 %>%
+  group_by(word, Product) %>%
+  summarise(n = n()) %>%
+  arrange(desc(n))
+```
+
+Method 2: count(word, Product)
+```{r}
+tidy_review_2 %>%
+  count(word, Product) %>%
+  arrange(desc(n))
+```
+
+我們想要保留兩個 products 中前 10 名最多 counts 的 words，可以用 **top_n()**
+```{r}
+word_counts_2 = tidy_review_2 %>%
+  count(word, Product) %>%
+  group_by(Product) %>%
+  top_n(10, n) %>%
+  ungroup() %>%
+  mutate(word2 = fct_reorder(word, n))
+
+ggplot(word_counts_2, aes(x = word2, y = n, fill = Product)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ Product, scales = "free_y") +  
+  coord_flip() +
+  ggtitle("Review Word Counts")
+```
+
+"facet_wrap(~ Product, scales = "free_y")" 代表我將原本的圖根據 Product 分成兩張圖，一張圖屬於一種 product。
+
+"free_y" 代表各個plots的 y-axis 的範圍可以不同。
+
+"show.legend = FALSE" 代表不要顯示圖例。
+
+
+---
+
+# Plotting word clouds
+## Load the wordcloud package
+```{r}
+library(wordcloud)
+```
+
+## 利用 wordcloud() 建立文字雲
+```{r}
+word_counts_3 = tidy_review_2 %>%
+  count(word)
+
+wordcloud(
+  words = word_counts_3$word,
+  freq = word_counts_3$n,
+  max.words = 30,
+  colors = "blue"
+)
+```

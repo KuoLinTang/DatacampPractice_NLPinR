@@ -1,0 +1,8 @@
+"0","tidy_reviews %>%"
+"0","  count(word) %>%"
+"0","  filter(n > 300) %>%"
+"0","  arrange(desc(n)) %>%"
+"0","  ggplot(aes(x = word, y = n)) + "
+"0","  geom_col() + "
+"0","  coord_flip() +"
+"0","  ggtitle(""Review Word Counts"")"

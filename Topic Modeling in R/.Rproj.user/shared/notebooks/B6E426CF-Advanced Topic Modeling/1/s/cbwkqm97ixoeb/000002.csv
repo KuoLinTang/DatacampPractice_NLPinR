@@ -1,0 +1,33 @@
+"0","data_airbnb_url = ""https://raw.githubusercontent.com/kwartler/text_mining/master/bos_airbnb_1k.csv"""
+"0",""
+"0","data_airbnb = readr::read_csv(data_airbnb_url) %>% "
+"0","  mutate(doc_id = row_number())"
+"2","
+[36m--[39m [1m[1mColumn specification[1m[22m [36m----------------------------------------------------------------------[39m
+cols(
+  .default = col_character(),
+  listing_id = [32mcol_double()[39m,
+  reviewer_id = [32mcol_double()[39m,
+  scrape_id = [32mcol_double()[39m,
+  host_id = [32mcol_double()[39m,
+  host_is_superhost = [33mcol_logical()[39m,
+  host_listings_count = [32mcol_double()[39m,
+  host_total_listings_count = [32mcol_double()[39m,
+  host_has_profile_pic = [33mcol_logical()[39m,
+  host_identity_verified = [33mcol_logical()[39m,
+  neighbourhood_group_cleansed = [33mcol_logical()[39m,
+  latitude = [32mcol_double()[39m,
+  longitude = [32mcol_double()[39m,
+  is_location_exact = [33mcol_logical()[39m,
+  accommodates = [32mcol_double()[39m,
+  bathrooms = [32mcol_double()[39m,
+  bedrooms = [32mcol_double()[39m,
+  beds = [32mcol_double()[39m,
+  square_feet = [32mcol_double()[39m,
+  guests_included = [32mcol_double()[39m,
+  minimum_nights = [32mcol_double()[39m
+  # ... with 17 more columns
+)
+[36mi[39m Use [38;5;235m[48;5;253m[38;5;235m[48;5;253m`spec()`[48;5;253m[38;5;235m[49m[39m for the full column specifications.
+
+"

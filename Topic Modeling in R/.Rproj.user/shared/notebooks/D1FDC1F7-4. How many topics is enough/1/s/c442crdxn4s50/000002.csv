@@ -1,0 +1,5 @@
+"0","library(tidyverse)
+library(tidytext)
+library(topicmodels)
+"
+"2","package ‘topicmodels’ was built under R version 4.0.5"

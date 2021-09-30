@@ -1,0 +1,8 @@
+"0","wider_counts %>%"
+"0","  ggplot(aes(x = Stars2, y = overall_sentiment, fill = Stars2)) + "
+"0","  geom_col(show.legend = FALSE) + "
+"0","  coord_flip() + "
+"0","  labs(title = ""Overall Sentiment by Stars"","
+"0","       subtitle = ""Reviews for Robotic Vacuum"","
+"0","       x = ""Stars"","
+"0","       y = ""Overall Sentiment"")"

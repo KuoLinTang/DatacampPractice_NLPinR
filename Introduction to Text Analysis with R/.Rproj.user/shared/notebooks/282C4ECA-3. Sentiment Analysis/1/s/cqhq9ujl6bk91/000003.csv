@@ -1,0 +1,5 @@
+"0","get_sentiments(""afinn"") %>%"
+"0","  summarise("
+"0","    min = min(value),"
+"0","    max = max(value)"
+"0","  )"

@@ -1,0 +1,4 @@
+"0","tidy_reviews %>%"
+"0","  count(word) %>%"
+"0","  arrange(desc(n)) %>%"
+"0","  ggplot(aes(x = word, y = n)) + geom_col()"

@@ -1,0 +1,7 @@
+"0","data_airbnb = data_airbnb %>%"
+"0","  mutate(doc_id = paste0(""doc"", row_number()))"
+"0",""
+"0","data_airbnb = data_airbnb %>%"
+"0","  left_join(lemmatized)"
+"2","Joining, by = ""doc_id""
+"

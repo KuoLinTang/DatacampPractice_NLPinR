@@ -1,0 +1,234 @@
+---
+title: "Topic Modeling"
+author: "Kuo-Lin Tang"
+date: "11/05/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Load required packages
+```{r}
+library(tidyverse)
+library(tidytext)
+```
+
+# Load the data
+```{r}
+reviews = read_csv("Datasets/Roomba Reviews.csv")
+```
+
+
+# Data Preparation
+## Add an additional column "id"
+```{r}
+reviews = reviews %>%
+  mutate(id = row_number())
+```
+
+## Tokenisation
+```{r}
+tokenised_reviews = reviews %>%
+  unnest_tokens(word, Review)
+```
+
+## Remove stop words
+```{r}
+# define a customised stop words tibble
+my_stopwords = tribble(
+  ~word, ~lexicon,
+  "roomba", "CUSTOM",
+  "2", "CUSTOM"
+)
+
+# combine my_stopwords and stop_words
+All_stopwords = stop_words %>%
+  rbind(my_stopwords)
+
+# remove stop words from tokens
+no_stopword_tokenised_reviews = tokenised_reviews %>%
+  anti_join(All_stopwords)
+
+rm(my_stopwords, All_stopwords)
+```
+
+
+# Latent Dirichlet Allocation
+是一種unsupervised learning method。
+
+## Clustering vs LDA
+Clustering是根據objects的距離來分群的，因此屬於continuous measure。此外，每個object只會被分到一個cluster。
+
+LDA主要是根據word counts來計算，因此屬於discrete measure。此外，每個object都是任何一個topic的一部分
+
+
+
+## Document Term Matrix (DTM)
+做Latent Dirichlet Allocation之前必須先有Document Term Matrix。
+
+這個matrix的每一個row代表一個document，而每一個column代表一個term。這個matrix跟dataframe很像，不過每個column都要是term (columns has to be the same type)。
+
+而matrix內部的值則是該column所代表的term在該row所代表的document內出現的次數。
+
+這個matrix是一種sparse matrix，也就是說matrix的值有很大一部分都是0 (因為大部分的documents可能沒有用到大部分的terms)
+
+
+### Create DTM using cast_dtm(dataframe, document, word, value) 函數
+```{r}
+no_stopword_tokenised_reviews %>%
+  count(word, id) %>%
+  cast_dtm(id, word, n)
+```
+
+上面的結果可知，這個DTM共有1791個documents，9670個terms，因此整個矩陣有1791*9670 = 17,318,970個elements。
+
+Non-/sparse entries = 63115/17255854 代表矩陣中有63115個非0 elements，以及17,255,854個0 (very sparse)。
+
+
+**接下來，要將此sparse matrix物件轉換成matrix才能做更多分析。**
+```{r}
+dtm_reviews = no_stopword_tokenised_reviews %>%
+  count(word, id) %>%
+  cast_dtm(id, word, n) %>%
+  as.matrix()
+```
+
+由於矩陣內容很大，因此我們只看其中一部分就好
+```{r}
+dtm_reviews[1:4, 2000:2004]
+```
+
+
+
+## Running topic models
+有了Document Term Matrix之後，就可以做topic modeling了。
+
+想要建立topic模型，要使用 **topicmodels** 套件。
+```{r}
+library(topicmodels)
+```
+
+接下來，建模的方法就是執行LDA()函數，其中，有4個重要的參數：
+
+1. input = dtm_reviews，也就是要用來運算的DTM (已經轉換成matrix型態了)
+2. k = N，N 代表我們想要模型找到多少個topics
+3. method = 'Gibbs'，method的default是quick approximation，而"Gibbs"是一個更complete的方法
+4. control = list(seed=42)，代表了設定random seed，讓結果可以reproduce (必須以list的型態輸入)
+```{r}
+lda_out = LDA(
+  dtm_reviews,
+  k = 2,
+  method = "Gibbs",
+  control =list(seed=42)
+)
+
+lda_out
+```
+
+可以看到LDA()的回傳值為一個LDA_Gibbs物件，並可以透過glimpse()函數來檢視該物件的內容。
+```{r}
+glimpse(lda_out)
+```
+
+其中，beta為一個2*9670的matrix，2代表兩個topics，9670代表terms的數量。因此，beta的第一個row存了各個terms屬於第一個topic的機率，第二個row存了各個terms屬於第二個topic的機率。這是很重要的，因為我們可以透過這個矩陣，看看各topic分別主要跟哪些terms有關。因此我們可以用tidy()函數將beta這個attribute取出。
+
+
+tidy()函數內部的參數必須要用到正確的資料結構，這裡beta是一個matrix，因此輸入matrix = "beta"。
+```{r}
+lda_topics = lda_out %>%
+  tidy(matrix = "beta") %>%
+  arrange(desc(beta))
+```
+
+
+cast_dtm() 讓我們將一個tidy data轉換成dtm (untidy data)，而tidy() 則是讓我們將untidy data轉換成tidy format。
+
+### Topic Visualisation
+```{r}
+lda_topics %>%
+  group_by(topic) %>%
+  top_n(15, beta) %>%
+  ungroup() %>%
+  mutate(term2 = fct_reorder(term, beta)) %>%
+  ggplot(aes(x = term2, y = beta, fill = as.factor(topic))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~topic, scales = "free") +
+  coord_flip()
+```
+
+透過這張圖，可以很好的用已知的terms去詮釋各topics所代表的意義。
+
+
+
+### 測試3個topics的interpretability
+```{r}
+# modeling
+lda_out2 = LDA(
+  dtm_reviews,
+  k = 3,
+  method = "Gibbs",
+  control = list(seed=42)
+)
+
+# extract beta (probability)
+lda_topics2 = tidy(lda_out2, matrix = "beta") %>%
+  arrange(beta)
+
+# visualisation
+lda_topics2 %>%
+  group_by(topic) %>%
+  top_n(15, beta) %>%
+  ungroup() %>%
+  mutate(term2 = fct_reorder(term, beta)) %>%
+  ggplot(aes(x = term2, y = beta, fill = as.factor(topic))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~topic, scales = "free") +
+  coord_flip()
+```
+
+
+
+### 測試4個topics的interpretability
+```{r}
+# modeling
+lda_out3 = LDA(
+  dtm_reviews,
+  k = 4,
+  method = "Gibbs",
+  control = list(seed=42)
+)
+
+# extract beta (probability)
+lda_topics3 = tidy(lda_out3, matrix = "beta") %>%
+  arrange(beta)
+
+# visualisation
+lda_topics3 %>%
+  group_by(topic) %>%
+  top_n(15, beta) %>%
+  ungroup() %>%
+  mutate(term2 = fct_reorder(term, beta)) %>%
+  ggplot(aes(x = term2, y = beta, fill = as.factor(topic))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~topic, scales = "free") +
+  coord_flip()
+```
+
+
+## 決定topics的數量
+決定topics的數量是一個heuristics的過程。我們可以一直增加topics的數量，並且每次都要去試著詮釋所有topics代表的意義。如果目前我已經找到N個不同的topics，而我再做一次topic modeling with k = N+1，然後詮釋這N+1個topics所代表的意義，並發現新增的topic似乎跟前面的任一topic有重複，則代表我們可以選N為我們k的最佳值。
+
+
+### 檢視各document的兩個topics的比例
+```{r}
+document_topics = lda_out %>%
+  tidy(matrix = "gamma")
+document_topics
+
+wider_document_topics = document_topics %>%
+  spread(topic, gamma)
+wider_document_topics
+```

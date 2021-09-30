@@ -1,0 +1,5 @@
+"0","sentiment_reviews = no_stopword_tokens %>%
+  inner_join(get_sentiments(""loughran""))
+"
+"2","Joining, by = ""word""
+"
